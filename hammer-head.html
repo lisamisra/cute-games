@@ -41,7 +41,8 @@
     font-size: 1.4rem; color: #2E1500; margin-bottom: 1.5rem;
   }
   #difficulty-pick {
-    display: flex; gap: 1rem; margin-bottom: 1rem;
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 1rem; margin-bottom: 1rem;
   }
   .diff-btn {
     font-size: 1.3rem; padding: 0.5em 1.4em;
@@ -69,6 +70,9 @@
   .diff-btn.hard { background: #FF6347; color: #fff; border-color: #8B0000; box-shadow: 0 4px 0 #8B0000; }
   .diff-btn.hard:hover { box-shadow: 0 6px 0 #8B0000; }
   .diff-btn.hard:active { box-shadow: 0 2px 0 #8B0000; }
+  .diff-btn.achal { background: #9B59B6; color: #fff; border-color: #6C3483; box-shadow: 0 4px 0 #6C3483; }
+  .diff-btn.achal:hover { box-shadow: 0 6px 0 #6C3483; }
+  .diff-btn.achal:active { box-shadow: 0 2px 0 #6C3483; }
   #title-screen .gnome-preview {
     font-size: 5rem; margin-bottom: 1.5rem;
     animation: wobble 0.8s infinite alternate;
@@ -427,6 +431,7 @@
     <button class="diff-btn easy" onclick="startGame('easy')">Easy</button>
     <button class="diff-btn normal" onclick="startGame('normal')">Normal</button>
     <button class="diff-btn hard" onclick="startGame('hard')">Hard</button>
+    <button class="diff-btn achal" onclick="startGame('achal')">Uncle Achal</button>
   </div>
   <a href="index.html" class="home-link">Back to Games</a>
 </div>
@@ -477,7 +482,9 @@ const DIFFICULTY = {
   normal: { visibleMin: 1000, visibleRange: 400, gapMin: 800,  gapRange: 1000, missHeal: 2,
             grass: ['#87CEEB', '#C8B850', '#8B7D28'], label: 'Normal' },
   hard:   { visibleMin: 550,  visibleRange: 250, gapMin: 400,  gapRange: 600,  missHeal: MAX_HP,
-            grass: ['#8B9EAB', '#A85A50', '#6B3028'], label: 'Hard' },
+            grass: ['#8B9EAB', '#A85A50', '#6B3028'], label: 'Hard', gnomesPerRound: 1 },
+  achal:  { visibleMin: 1200, visibleRange: 400, gapMin: 600,  gapRange: 800,  missHeal: MAX_HP,
+            grass: ['#FF69B4', '#9B59B6', '#6C3483'], label: 'Uncle Achal', gnomesPerRound: 2 },
 };
 let currentDifficulty = DIFFICULTY.normal;
 
@@ -499,7 +506,8 @@ let hits = 0;
 let misses = 0;
 let combo = 0;
 let gnomeHP = MAX_HP;
-let activeHole = -1;
+let activeHoles = [];
+let roundHitsCount = 0;
 let gnomeVisible = false;
 let gnomeAppearedAt = 0;
 let gnomeTimeout = null;
@@ -775,29 +783,32 @@ function showBubble(holeIndex, text, duration = 800) {
   setTimeout(() => bubble.classList.remove('show'), duration);
 }
 
-// --- Spawn gnome at random hole ---
+// --- Spawn gnome(s) at random hole(s) ---
 function spawnGnome() {
   if (!gameRunning) return;
 
-  // Pick a random hole different from the last one
-  let newHole;
-  do {
-    newHole = Math.floor(Math.random() * holes.length);
-  } while (newHole === activeHole && holes.length > 1);
-
-  activeHole = newHole;
+  const count = currentDifficulty.gnomesPerRound || 1;
+  activeHoles = [];
+  roundHitsCount = 0;
   gnomeVisible = true;
   gnomeAppearedAt = Date.now();
 
-  const container = holes[activeHole].querySelector('.gnome-container');
-  container.classList.remove('hit');
-  container.classList.add('visible');
+  // Pick N different random holes
+  const available = [];
+  for (let i = 0; i < holes.length; i++) available.push(i);
+  for (let i = 0; i < count && available.length > 0; i++) {
+    const pick = Math.floor(Math.random() * available.length);
+    const holeIdx = available.splice(pick, 1)[0];
+    activeHoles.push(holeIdx);
 
-  // Say pfffft
-  showBubble(activeHole, 'pfffft!');
+    const container = holes[holeIdx].querySelector('.gnome-container');
+    container.classList.remove('hit');
+    container.classList.add('visible');
+    showBubble(holeIdx, 'pfffft!');
+  }
   speak('pfffft');
 
-  // Auto-hide after a window (gnome escapes)
+  // Auto-hide after a window (gnomes escape)
   const visibleTime = currentDifficulty.visibleMin + Math.random() * currentDifficulty.visibleRange;
   gnomeTimeout = setTimeout(() => {
     if (gnomeVisible && gameRunning) {
@@ -805,28 +816,34 @@ function spawnGnome() {
     }
   }, visibleTime);
 
-  // Schedule next gnome
+  // Schedule next round
   const nextDelay = currentDifficulty.gapMin + Math.random() * currentDifficulty.gapRange;
   popInterval = setTimeout(spawnGnome, visibleTime + nextDelay);
 }
 
-// --- Gnome escapes (player was too slow) ---
+// --- Gnome(s) escape (player was too slow) ---
 function gnomeEscaped() {
-  hideGnome();
+  // Show laugh on all remaining visible gnomes
+  for (const idx of activeHoles) {
+    const container = holes[idx].querySelector('.gnome-container');
+    if (container.classList.contains('visible')) {
+      showBubble(idx, 'lol 😂', 900);
+    }
+  }
+  hideAllGnomes();
   misses++;
   combo = 0;
   updateCombo();
   healGnomeOnMiss();
-  // The gnome laughs from wherever it was
-  showBubble(activeHole, 'lol 😂', 900);
   setTimeout(() => speak('lol'), 150);
 }
 
-// --- Hide gnome ---
-function hideGnome() {
-  if (activeHole < 0) return;
-  const container = holes[activeHole].querySelector('.gnome-container');
-  container.classList.remove('visible');
+// --- Hide all active gnomes ---
+function hideAllGnomes() {
+  for (const idx of activeHoles) {
+    const container = holes[idx].querySelector('.gnome-container');
+    container.classList.remove('visible');
+  }
   gnomeVisible = false;
 }
 
@@ -850,9 +867,8 @@ function handleTap(x, y, target) {
   const clickedGnome = target.closest('.gnome-container.visible');
 
   if (clickedGnome) {
-    // HIT!
-    clearTimeout(gnomeTimeout);
     const idx = parseInt(clickedGnome.dataset.index);
+    if (!activeHoles.includes(idx)) return;
 
     // Speed bonus: faster reaction = more points (10-100)
     const reactionMs = Date.now() - gnomeAppearedAt;
@@ -867,45 +883,57 @@ function handleTap(x, y, target) {
 
     score += hitPoints;
     hits++;
-    gnomeHP--;
-    gnomeVisible = false;
+    roundHitsCount++;
 
-    // Visual feedback
+    // Visual feedback for individual gnome
     clickedGnome.classList.add('hit');
     showBubble(idx, 'ouuuuch! 😵', 900);
     speak('ouuuuch');
     spawnStars(x, y);
     showScorePopup(x, y, hitPoints, comboMultiplier);
 
-    // Update HUD
-    updateHUD();
-    updateCombo();
-
-    // After hit animation, hide
+    // After hit animation, hide this gnome
     setTimeout(() => {
       clickedGnome.classList.remove('visible', 'hit');
     }, 300);
 
-    // Check game over
-    if (gnomeHP <= 0) {
-      endGame();
+    const gnomesNeeded = currentDifficulty.gnomesPerRound || 1;
+
+    if (roundHitsCount >= gnomesNeeded) {
+      // Round complete - all gnomes hit! HP decreases
+      clearTimeout(gnomeTimeout);
+      gnomeHP--;
+      gnomeVisible = false;
+      updateHUD();
+      updateCombo();
+
+      if (gnomeHP <= 0) {
+        endGame();
+      }
+    } else {
+      // Partial hit - still more gnomes to whack this round
+      updateHUD();
+      updateCombo();
     }
   } else if (gnomeVisible) {
-    // Missed - tapped wrong spot while gnome is showing
+    // Missed - tapped wrong spot while gnome(s) showing
     clearTimeout(gnomeTimeout);
     misses++;
     combo = 0;
     updateCombo();
     healGnomeOnMiss();
-    hideGnome();
+
+    // Show laugh on remaining gnomes before hiding
+    for (const idx of activeHoles) {
+      const container = holes[idx].querySelector('.gnome-container');
+      if (container.classList.contains('visible')) {
+        showBubble(idx, 'lol 😂', 900);
+      }
+    }
+    hideAllGnomes();
     showMissBubble(x, y);
     shakeScreen();
-
-    // Gnome laughs
-    if (activeHole >= 0) {
-      showBubble(activeHole, 'lol 😂', 900);
-      setTimeout(() => speak('lol'), 100);
-    }
+    setTimeout(() => speak('lol'), 100);
   }
 }
 
@@ -1030,7 +1058,8 @@ function startGame(difficulty) {
   misses = 0;
   combo = 0;
   gnomeHP = MAX_HP;
-  activeHole = -1;
+  activeHoles = [];
+  roundHitsCount = 0;
   gnomeVisible = false;
   gameRunning = true;
 
