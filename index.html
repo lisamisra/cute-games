@@ -7,11 +7,13 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  body, body * {
+  body {
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
     font-family: 'Segoe UI', 'Comic Sans MS', cursive, sans-serif;
+  }
+  *, *::before, *::after {
     cursor: none !important;
   }
 
@@ -367,16 +369,16 @@
 </div>
 
 <script>
-// --- Difficulty presets ---
-const DIFFICULTY = {
-  easy:   { visibleMin: 1500, visibleRange: 600, gapMin: 1000, gapRange: 1200 },
-  normal: { visibleMin: 1000, visibleRange: 400, gapMin: 800,  gapRange: 1000 },
-  hard:   { visibleMin: 550,  visibleRange: 250, gapMin: 400,  gapRange: 600  },
-};
-let currentDifficulty = DIFFICULTY.normal;
-
 // --- Game State ---
 const MAX_HP = 10;
+
+// --- Difficulty presets ---
+const DIFFICULTY = {
+  easy:   { visibleMin: 1500, visibleRange: 600, gapMin: 1000, gapRange: 1200, missHeal: 0 },
+  normal: { visibleMin: 1000, visibleRange: 400, gapMin: 800,  gapRange: 1000, missHeal: 2 },
+  hard:   { visibleMin: 550,  visibleRange: 250, gapMin: 400,  gapRange: 600,  missHeal: MAX_HP },
+};
+let currentDifficulty = DIFFICULTY.normal;
 const HOLE_COUNT = 9;
 const HOLE_W = 160;
 const HOLE_H = 130;
@@ -544,10 +546,11 @@ function spawnGnome() {
 // --- Gnome escapes (player was too slow) ---
 function gnomeEscaped() {
   hideGnome();
+  misses++;
+  healGnomeOnMiss();
   // The gnome laughs from wherever it was
   showBubble(activeHole, 'lol 😂', 900);
   setTimeout(() => speak('lol', 1.0, 2.0), 150);
-  misses++;
 }
 
 // --- Hide gnome ---
@@ -556,6 +559,15 @@ function hideGnome() {
   const container = holes[activeHole].querySelector('.gnome-container');
   container.classList.remove('visible');
   gnomeVisible = false;
+}
+
+// --- Heal gnome on miss ---
+function healGnomeOnMiss() {
+  const heal = currentDifficulty.missHeal;
+  if (heal <= 0) return;
+  const before = gnomeHP;
+  gnomeHP = Math.min(MAX_HP, gnomeHP + heal);
+  if (gnomeHP !== before) updateHUD();
 }
 
 // --- Handle click ---
@@ -596,7 +608,10 @@ function handleClick(e) {
     }
   } else if (gnomeVisible) {
     // Missed - clicked wrong spot while gnome is showing
+    clearTimeout(gnomeTimeout);
     misses++;
+    healGnomeOnMiss();
+    hideGnome();
     showMissBubble(e.clientX, e.clientY);
     shakeScreen();
 
