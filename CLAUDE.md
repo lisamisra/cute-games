@@ -6,10 +6,10 @@ Always use conventional commits (e.g. `feat:`, `fix:`, `docs:`, `chore:`, `refac
 
 ## Game Inspirations
 
-- **Hammer Head:** Lisa's first Scratch game
-- **Dungeon Doom:** From watching her dad play de_chicken on FACEIT
-- **Epic Bot Battles:** From watching Real Steel with her parents
-- **Egg Catcher (coming soon):** A game Lisa's mama played as a kid
+- **Hammer Head:** My first Scratch game
+- **Dungeon Doom:** From watching my dad play de_chicken on FACEIT
+- **Epic Bot Battles:** From watching the movie Real Steel with my parents
+- **Egg Catcher (coming soon):** A game my mama played as a kid
 
 ## File Structure
 
