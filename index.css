@@ -49,8 +49,9 @@ body {
 }
 
 .games-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 280px);
+  grid-auto-rows: 1fr;
   gap: 1.5rem;
   justify-content: center;
   max-width: 700px;
@@ -119,6 +120,7 @@ a.game-card:active {
   font-style: italic;
   margin-top: 0.5rem;
   line-height: 1.4;
+  min-height: 2.8em;
 }
 
 .badge {

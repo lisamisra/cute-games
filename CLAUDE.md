@@ -4,6 +4,13 @@ Always use conventional commits (e.g. `feat:`, `fix:`, `docs:`, `chore:`, `refac
 
 "Lisa's Fun Games" — a collection of browser-based games built with vanilla HTML/CSS/JS. Runs via `file://` protocol (no build step, no bundler, no ES modules).
 
+## Game Inspirations
+
+- **Hammer Head:** Lisa's first Scratch game
+- **Dungeon Doom:** From watching her dad play de_chicken on FACEIT
+- **Epic Bot Battles:** From watching Real Steel with her parents
+- **Egg Catcher (coming soon):** A game Lisa's mama played as a kid
+
 ## File Structure
 
 ```
